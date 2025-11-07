@@ -12,6 +12,19 @@ import subprocess
 import base64
 import re
 
+def render_markdown(content):
+    # Render code blocks as-is
+    code_blocks = re.findall(r"```.*?```", content, flags=re.DOTALL)
+    for i, block in enumerate(code_blocks):
+        content = content.replace(block, f"@@BLOCK{i}@@")
+    # Escape HTML outside code blocks
+    content = html.escape(content)
+    # Restore code blocks
+    for i, block in enumerate(code_blocks):
+        content = content.replace(f"@@BLOCK{i}@@", block)
+    return content
+
+
 # ===== TESSERACT CONFIG =====
 def configure_tesseract():
     try:
@@ -63,7 +76,7 @@ def get_image_base64(uploaded_file):
     except:
         return None
 
-def derive_topic_from_text(text, max_words=6):
+def derive_topic_from_text(text, max_words=4):
     """Get the 'topic' for a chat from first sentence and return up to max_words words."""
     if not text or not text.strip():
         return "New chat"
@@ -749,7 +762,6 @@ if prompt:
     })
     
     st.rerun()
-
 # ===== STREAM AI RESPONSE =====
 if st.session_state.active_chat:
     chat = st.session_state.chat_history[st.session_state.active_chat]
@@ -765,6 +777,8 @@ if st.session_state.active_chat:
             bot_reply = ""
             last_update = time.time()
             
+            import html  # FIX: Added to escape HTML
+            
             # Stream the AI response
             for token in query_ollama_stream(user_prompt, file_context):
                 buffer += token
@@ -773,8 +787,9 @@ if st.session_state.active_chat:
                 # Update display periodically for smoother streaming
                 if current_time - last_update > 0.1 or len(buffer) > 50:
                     bot_reply += buffer
+                    safe_bot_reply = render_markdown(bot_reply) # FIX: Escape HTML
                     placeholder.markdown(
-                        f'<div class="message assistant"><div class="bubble assistant">{bot_reply}▌</div></div>', 
+                        f'<div class="message assistant"><div class="bubble assistant">{safe_bot_reply}▌</div></div>', 
                         unsafe_allow_html=True
                     )
                     buffer = ""
@@ -784,8 +799,9 @@ if st.session_state.active_chat:
             bot_reply += buffer
             
             # Final display without cursor
+            safe_bot_reply = bot_reply  # FIX: Escape HTML
             placeholder.markdown(
-                f'<div class="message assistant"><div class="bubble assistant">{bot_reply}</div></div>', 
+                f'<div class="message assistant"><div class="bubble assistant">{safe_bot_reply}</div></div>', 
                 unsafe_allow_html=True
             )
             
