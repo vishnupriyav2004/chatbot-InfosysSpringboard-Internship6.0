@@ -785,7 +785,7 @@ if st.session_state.active_chat:
                 current_time = time.time()
                 
                 # Update display periodically for smoother streaming
-                if current_time - last_update > 0.1 or len(buffer) > 50:
+                if current_time - last_update > 0.001 or len(buffer) > 5:
                     bot_reply += buffer
                     safe_bot_reply = render_markdown(bot_reply) # FIX: Escape HTML
                     placeholder.markdown(
